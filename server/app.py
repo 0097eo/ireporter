@@ -339,6 +339,59 @@ class RecordStatusUpdate(Resource):
             db.session.rollback()
             return {'message': f'Error updating status: {str(e)}'}, 500
 
+class UserProfile(Resource):
+    @jwt_required()
+    def get(self):
+        """Get the current user's profile information"""
+        current_user_id = get_jwt_identity()
+        user = db.session.get(RegularUser, current_user_id)
+        
+        if not user:
+            return {'message': 'User not found'}, 404
+            
+        return {
+            'username': user.username,
+            'email': user.email,
+            'phone_number': user.phone_number or '',
+            'created_at': user.created_at.isoformat()
+        }
+    
+    @jwt_required()
+    def put(self):
+    
+        current_user_id = get_jwt_identity()
+        user = db.session.get(RegularUser, current_user_id)
+        
+        if not user:
+            return {'message': 'User not found'}, 404
+            
+        data = request.get_json()
+        
+        phone_number = data.get('phone_number')
+        if phone_number:
+            # Remove any spaces or special characters
+            phone_number = ''.join(filter(str.isdigit, phone_number))
+            
+            if len(phone_number) < 10 or len(phone_number) > 15:
+                return {
+                    'message': 'Invalid phone number format. Please enter a valid phone number'
+                }, 400
+                
+            user.phone_number = phone_number
+            
+            try:
+                db.session.commit()
+                return {
+                    'message': 'Profile updated successfully',
+                    'phone_number': phone_number
+                }
+            except Exception as e:
+                db.session.rollback()
+                return {'message': f'Error updating profile: {str(e)}'}, 500
+        else:
+            return {'message': 'No phone number provided'}, 400
+        
+api.add_resource(UserProfile, '/profile')        
 api.add_resource(RecordStatusUpdate, '/records/<int:record_id>/status')   
 api.add_resource(RecordDetails, '/records/<int:record_id>')    
 api.add_resource(UserRecords, '/user_records')
