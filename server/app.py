@@ -4,7 +4,7 @@ import smtplib
 import secrets
 from flask_restful import Resource
 from flask import request
-from models import User, RegularUser, Record
+from models import User, RegularUser, Record, StatusUpdate, Admin
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from datetime import timedelta
 from sqlalchemy import or_
@@ -33,7 +33,7 @@ def send_verification_code(email, verification_code):
 
 def send_status_update(email, title, new_status):
     subject = f"IReporter: Status Update"
-    body = f"The record titles {title} has been updated to: {new_status}"
+    body = f"The record titled {title} has been updated to {new_status}"
     send_email(email, subject, body)
 
 class Register(Resource):
@@ -274,6 +274,72 @@ class RecordDetails(Resource):
         db.session.commit()
         return {'message': 'Record deleted successfully'}
     
+class RecordStatusUpdate(Resource):
+    @jwt_required()
+    def put(self, record_id):
+        # Get current admin user
+        current_user_id = get_jwt_identity()
+        admin = db.session.get(Admin, current_user_id)
+        
+        if not admin or not admin.is_admin:
+            return {'message': 'Unauthorized. Admin access required.'}, 403
+        
+        # Get the record
+        record = db.session.get(Record, record_id)
+        
+        # Get status from request
+        data = request.get_json()
+        new_status = data.get('status')
+        comment = data.get('comment', '')  
+        
+        # Validate status
+        valid_statuses = ['under investigation', 'rejected', 'resolved']
+        if new_status not in valid_statuses:
+            return {
+                'message': 'Invalid status. Must be one of: under investigation, rejected, or resolved'
+            }, 400
+        
+        # Store the old status for the status update record
+        old_status = record.status
+        
+        # Update the record status
+        record.status = new_status
+        
+        # Create status update record
+        status_update = StatusUpdate(
+            record_id=record.id,
+            old_status=old_status,
+            new_status=new_status,
+            comment=comment,
+            admin_id=admin.id
+        )
+        
+        # Add and commit changes
+        db.session.add(status_update)
+        
+        try:
+            db.session.commit()
+            
+            # Get the record owner's email
+            record_owner = db.session.get(User, record.user_id)
+            
+            # Send email notification
+            send_status_update(
+                record_owner.email,
+                record.title,
+                new_status
+            )
+            
+            return {
+                'message': f'Record status updated to {new_status}',
+                'status_update_id': status_update.id
+            }, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return {'message': f'Error updating status: {str(e)}'}, 500
+
+api.add_resource(RecordStatusUpdate, '/records/<int:record_id>/status')   
 api.add_resource(RecordDetails, '/records/<int:record_id>')    
 api.add_resource(UserRecords, '/user_records')
 api.add_resource(Records, '/records')
