@@ -52,7 +52,7 @@ const Navbar = () => {
           </div>
           <div className="hidden md:flex space-x-6">
             <NavItem to="/" setIsOpen={setIsOpen}>Home</NavItem>
-            <NavItem to="/reports" setIsOpen={setIsOpen}>Reported Incidents</NavItem>
+            <NavItem to="/reports" setIsOpen={setIsOpen}>Incidents</NavItem>
             <NavItem to="/about" setIsOpen={setIsOpen}>About</NavItem>
             {user?.userType === 'admin' && <NavItem to="/admin" setIsOpen={setIsOpen}>Admin</NavItem>}
             {user?.userType === 'customer' && <NavItem to="/user" setIsOpen={setIsOpen}>Profile</NavItem>}
