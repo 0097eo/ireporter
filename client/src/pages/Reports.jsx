@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, FileText, MapPin, Clock, AlertCircle, Plus, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -162,7 +162,7 @@ const ReportsPage = () => {
           </div>
         ) : (
           <div className="grid gap-6">
-            {records.map((record, index) => (
+            {records.map((record ) => (
               <div
                 key={record.id}
                 className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-lg transition-shadow duration-300"
