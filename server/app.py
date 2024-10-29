@@ -43,7 +43,7 @@ class Register(Resource):
         email = data.get('email')
         
         if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
-            return {'message': "Username or email already in use"}
+            return {'message': "Username or email already in use"}, 400
         
         verification_code = secrets.token_hex(3)
         new_user = RegularUser(
