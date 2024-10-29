@@ -50,7 +50,7 @@ const Navbar = () => {
             <NavItem to="/" setIsOpen={setIsOpen}>Home</NavItem>
             <NavItem to="/reports" setIsOpen={setIsOpen}>Reports</NavItem>
             {user?.userType === 'admin' && <NavItem to="/admin" setIsOpen={setIsOpen}>Admin</NavItem>}
-            <NavItem to="/profile" setIsOpen={setIsOpen}>Profile</NavItem>
+            {user?.userType === 'customer' && <NavItem to="/user" setIsOpen={setIsOpen}>Profile</NavItem>}
           </div>
           <div className="hidden md:block">
             {user ? (
