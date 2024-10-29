@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Menu, X } from 'lucide-react';
 import PropTypes from 'prop-types';
+
 
 const NavItem = ({ to, children, setIsOpen }) => (
     <NavLink
@@ -27,10 +28,13 @@ const NavItem = ({ to, children, setIsOpen }) => (
 const Navbar = () => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+  
 
   const handleLogout = () => {
     logout();
     setIsOpen(false);
+    navigate('/')
   };
 
   const toggleMenu = () => {
@@ -48,7 +52,8 @@ const Navbar = () => {
           </div>
           <div className="hidden md:flex space-x-6">
             <NavItem to="/" setIsOpen={setIsOpen}>Home</NavItem>
-            <NavItem to="/reports" setIsOpen={setIsOpen}>Reports</NavItem>
+            <NavItem to="/reports" setIsOpen={setIsOpen}>Reported Incidents</NavItem>
+            <NavItem to="/about" setIsOpen={setIsOpen}>About</NavItem>
             {user?.userType === 'admin' && <NavItem to="/admin" setIsOpen={setIsOpen}>Admin</NavItem>}
             {user?.userType === 'customer' && <NavItem to="/user" setIsOpen={setIsOpen}>Profile</NavItem>}
           </div>
@@ -77,7 +82,7 @@ const Navbar = () => {
         {isOpen && (
           <div className="md:hidden mt-4">
             <NavItem to="/" setIsOpen={setIsOpen}>Home</NavItem>
-            <NavItem to="/reports" setIsOpen={setIsOpen}>Reports</NavItem>
+            <NavItem to="/reports" setIsOpen={setIsOpen}>Reported Incidents</NavItem>
             {user?.userType === 'admin' && <NavItem to="/admin" setIsOpen={setIsOpen}>Admin</NavItem>}
             <NavItem to="/profile" setIsOpen={setIsOpen}>Profile</NavItem>
             <div className="mt-4">
