@@ -391,6 +391,31 @@ class UserProfile(Resource):
         else:
             return {'message': 'No phone number provided'}, 400
         
+
+class Analytics(Resource):
+    @jwt_required()
+    def get(self):
+        """Fetch all records without pagination"""
+        records = Record.query.all()
+        
+        # Format the records for the response
+        records_data = [{
+            'id': record.id,
+            'title': record.title,
+            'description': record.description,
+            'record_type': record.record_type,
+            'location': record.location,
+            'status': record.status,
+            'created_at': record.created_at.isoformat(),
+            'updated_at': record.updated_at.isoformat()
+        } for record in records]
+        
+        return {
+            'records': records_data,
+            'total': len(records_data)
+        }
+
+api.add_resource(Analytics, '/analytics')
 api.add_resource(UserProfile, '/profile')        
 api.add_resource(RecordStatusUpdate, '/records/<int:record_id>/status')   
 api.add_resource(RecordDetails, '/records/<int:record_id>')    
