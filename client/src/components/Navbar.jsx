@@ -1,35 +1,43 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, AlertTriangle } from 'lucide-react';
 import PropTypes from 'prop-types';
 
+const Logo = () => (
+  <div className="flex items-center">
+    <AlertTriangle className="text-red-500 w-6 h-6 mr-2" />
+    <span className="font-bold text-xl">
+      <span className="text-red-500">i</span>
+      <span className="text-white">Reporter</span>
+    </span>
+  </div>
+);
 
 const NavItem = ({ to, children, setIsOpen }) => (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        `block py-2 px-4 ${
-          isActive ? 'text-blue-500' : 'text-gray-400 hover:text-gray-300'
-        }`
-      }
-      onClick={() => setIsOpen(false)}
-    >
-      {children}
-    </NavLink>
-  );
-  
-  NavItem.propTypes = {
-    to: PropTypes.string.isRequired,
-    children: PropTypes.node.isRequired,
-    setIsOpen: PropTypes.func.isRequired,
-  };
+  <NavLink
+    to={to}
+    className={({ isActive }) =>
+      `block py-2 px-4 ${
+        isActive ? 'text-blue-500' : 'text-gray-400 hover:text-gray-300'
+      }`
+    }
+    onClick={() => setIsOpen(false)}
+  >
+    {children}
+  </NavLink>
+);
+
+NavItem.propTypes = {
+  to: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+  setIsOpen: PropTypes.func.isRequired,
+};
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
-  
 
   const handleLogout = () => {
     logout();
@@ -46,8 +54,8 @@ const Navbar = () => {
       <div className="container mx-auto">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <NavLink to="/" className="text-white hover:text-gray-300 text-xl font-semibold">
-              iReporter
+            <NavLink to="/" className="hover:opacity-80 transition-opacity duration-200">
+              <Logo />
             </NavLink>
           </div>
           <div className="hidden md:flex space-x-6">
