@@ -19,6 +19,16 @@ const AdminDashboard = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(null);
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'draft': return 'bg-gray-100 text-gray-600';
+      case 'under investigation': return 'bg-blue-100 text-blue-600';
+      case 'resolved': return 'bg-green-100 text-green-600';
+      case 'rejected': return 'bg-red-100 text-red-600';
+      default: return 'bg-gray-100 text-gray-600';
+    }
+  };
+
   useEffect(() => {
     fetchRecords();
   }, [currentPage, searchQuery, recordType]);
@@ -228,10 +238,15 @@ const AdminDashboard = () => {
               <div>
                 <h3 className="font-semibold text-lg">{record.title}</h3>
                 <p className="text-gray-600 mt-2">{record.description}</p>
-                <div className="grid grid-cols-2 gap-4 mt-2 text-sm text-gray-500">
+                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
                   <span>Type: {record.record_type}</span>
                   <span>Location: {record.location}</span>
-                  <span>Status: {record.status}</span>
+                  <div className="flex items-center">
+                    <span className="text-gray-600 mr-2">Status:</span>
+                    <span className={`min-w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium ${getStatusColor(record.status)}`}>
+                      {record.status}
+                    </span>
+                  </div>
                   <span>Created: {new Date(record.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
