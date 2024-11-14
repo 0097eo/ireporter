@@ -1,9 +1,124 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { FileText, LogOut, Edit, X, ChartBar, AlertCircle } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
+import PropTypes from 'prop-types';
 import 'react-toastify/dist/ReactToastify.css';
 import AnalyticsView from '../components/Analytics';
+
+const CustomAlert = ({ message }) => {
+  if (!message) return null;
+
+  return (
+    <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+      <div className="flex items-center">
+        <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+        <div>
+          <h3 className="text-sm font-medium text-red-800">Error</h3>
+          <p className="text-sm text-red-700 mt-1">{message}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+CustomAlert.propTypes = {
+  message: PropTypes.string
+};
+
+const StatusUpdateModal = ({ isOpen, record, onClose, onUpdate, statusComment, setStatusComment }) => {
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  if (!isOpen || !record) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    await onUpdate(e, record.id, e.target.status.value);
+    setIsUpdating(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Update Record Status</h2>
+          <button
+            onClick={onClose}
+            disabled={isUpdating}
+            className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <select
+              name="status"
+              disabled={isUpdating}
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-100"
+              defaultValue={record.status}
+            >
+              <option value="under investigation">Under Investigation</option>
+              <option value="rejected">Rejected</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Comment</label>
+            <textarea
+              value={statusComment}
+              onChange={(e) => setStatusComment(e.target.value)}
+              disabled={isUpdating}
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-100"
+              rows={3}
+              placeholder="Add a comment about this status change..."
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isUpdating}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="relative px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 min-w-[100px]"
+            >
+              {isUpdating ? (
+                <>
+                  <span className="opacity-0">Update Status</span>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                </>
+              ) : (
+                'Update Status'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+StatusUpdateModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  record: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    status: PropTypes.string.isRequired
+  }),
+  onClose: PropTypes.func.isRequired,
+  onUpdate: PropTypes.func.isRequired,
+  statusComment: PropTypes.string.isRequired,
+  setStatusComment: PropTypes.func.isRequired
+};
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -19,7 +134,7 @@ const AdminDashboard = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(null);
 
-  const getStatusColor = (status) => {
+  const getStatusColor = useCallback((status) => {
     switch (status) {
       case 'draft': return 'bg-gray-100 text-gray-600';
       case 'under investigation': return 'bg-blue-100 text-blue-600';
@@ -27,14 +142,9 @@ const AdminDashboard = () => {
       case 'rejected': return 'bg-red-100 text-red-600';
       default: return 'bg-gray-100 text-gray-600';
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [currentPage, searchQuery, recordType]);
-
-  
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams({
@@ -58,7 +168,7 @@ const AdminDashboard = () => {
       setRecords(data.records);
       setTotalPages(data.pages);
     } catch (err) {
-      setError(`Failed to load records + ${err}`);
+      setError(`Failed to load records: ${err.message}`);
       toast.error('Error loading records', {
         position: "top-right",
         autoClose: 3000,
@@ -70,9 +180,20 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchQuery, recordType, user.token]);
 
-  const handleStatusUpdate = async (recordId, newStatus) => {
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
+
+  const handleStatusUpdate = async (e, recordId, newStatus) => {
+    e.preventDefault();
+      
+    if (!statusComment.trim()) {
+      toast.error('Please add a comment for the status update');
+      return;
+    }
+      
     try {
       const response = await fetch(`api/records/${recordId}/status`, {
         method: 'PUT',
@@ -82,14 +203,14 @@ const AdminDashboard = () => {
         },
         body: JSON.stringify({
           status: newStatus,
-          comment: statusComment
+          comment: statusComment.trim()
         })
       });
-
+        
       if (!response.ok) {
         throw new Error('Failed to update status');
       }
-
+        
       toast.success('Status updated successfully', {
         position: "top-right",
         autoClose: 3000,
@@ -99,9 +220,10 @@ const AdminDashboard = () => {
         draggable: true
       });
       setIsEditModalOpen(false);
+      setStatusComment('');
       fetchRecords();
     } catch (error) {
-      toast.error(`Failed to update status: ${error}`, {
+      toast.error(`Failed to update status: ${error.message}`, {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
@@ -112,83 +234,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const StatusUpdateModal = () => (
-    isEditModalOpen && editingRecord && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Update Record Status</h2>
-            <button
-              onClick={() => setIsEditModalOpen(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            handleStatusUpdate(editingRecord.id, e.target.status.value);
-          }} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
-              <select
-                name="status"
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                defaultValue={editingRecord.status}
-              >
-                <option value="under investigation">Under Investigation</option>
-                <option value="rejected">Rejected</option>
-                <option value="resolved">Resolved</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Comment</label>
-              <textarea
-                value={statusComment}
-                onChange={(e) => setStatusComment(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                rows={3}
-                placeholder="Add a comment about this status change..."
-              />
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => setIsEditModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Update Status
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )
-  );
-
-  const CustomAlert = ({ message }) => {
-    if (!message) {
-      return null;
-    }
-
-    return (
-      <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-        <div className="flex items-center">
-          <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-          <div>
-            <h3 className="text-sm font-medium text-red-800">Error</h3>
-            <p className="text-sm text-red-700 mt-1">{message}</p>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const RecordsView = () => (
     <div className="space-y-4">
@@ -285,11 +330,19 @@ const AdminDashboard = () => {
         </button>
       </div>
       
-      <StatusUpdateModal />
+      <StatusUpdateModal 
+        isOpen={isEditModalOpen}
+        record={editingRecord}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setStatusComment('');
+        }}
+        onUpdate={handleStatusUpdate}
+        statusComment={statusComment}
+        setStatusComment={setStatusComment}
+      />
     </div>
   );
-
-  
 
   if (loading) {
     return (

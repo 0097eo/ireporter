@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, FileText, LogOut, Edit, Trash2, X } from 'lucide-react';
+import { User, FileText, LogOut, Edit, Trash2, X, Loader } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -16,30 +16,24 @@ const UserDashboard = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [deleteRecord, setDeleteRecord] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const checkTokenAndLogout = (response) => {
+  const checkTokenAndLogout = useCallback((response) => {
     if (response.status === 401) {
       toast.error('Session expired. Please login again.');
       logout();
       return false;
     }
     return true;
-  };
+  }, [logout]);
 
-  useEffect(() => {
-    if (!user?.token) {
-      logout();
-      return;
-    }
-    fetchUserRecords();
-    fetchUserProfile();
-  }, [user]);
+  const fetchUserRecords = useCallback(async () => {
+    if (!user?.token) return;
 
-  const fetchUserRecords = async () => {
     try {
       const response = await fetch('/api/user_records', {
         headers: {
-          'Authorization': `Bearer ${user?.token}`
+          'Authorization': `Bearer ${user.token}`
         }
       });
       
@@ -52,9 +46,11 @@ const UserDashboard = () => {
       console.error('Error fetching records:', error);
       toast.error('Failed to fetch records');
     }
-  };
+  }, [user?.token, checkTokenAndLogout]);
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
+    if (!user?.token) return;
+
     try {
       const response = await fetch('api/profile', {
         headers: {
@@ -71,7 +67,25 @@ const UserDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.token]);
+
+  useEffect(() => {
+    if (!user?.token) {
+      logout();
+      return;
+    }
+
+    // Create a single async function to handle both fetches
+    const initializeData = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchUserRecords(),
+        fetchUserProfile()
+      ]);
+    };
+
+    initializeData();
+  }, [user?.token, logout, fetchUserRecords, fetchUserProfile]);
 
   const updateProfile = async (e) => {
     e.preventDefault();
@@ -95,10 +109,11 @@ const UserDashboard = () => {
     }
   };
 
-  const handleUpdateRecord = async (e) => {
+  const handleUpdateRecord = useCallback(async (e) => {
     e.preventDefault();
     if (!editingRecord || !user?.token) return;
 
+    setIsUpdating(true);
     try {
       const response = await fetch(`/api/records/${editingRecord.id}`, {
         method: 'PUT',
@@ -121,17 +136,19 @@ const UserDashboard = () => {
         throw new Error(errorData.message || 'Failed to update record');
       }
       
-      await fetchUserRecords(); // Refresh records after update
+      await fetchUserRecords();
       setIsEditModalOpen(false);
       setEditingRecord(null);
       toast.success('Record updated successfully');
     } catch (error) {
       console.error('Error updating record:', error);
       toast.error(error.message || 'Failed to update record');
+    } finally {
+      setIsUpdating(false);
     }
-  };
+  }, [user?.token, editingRecord, checkTokenAndLogout, fetchUserRecords]);
 
-  const handleDeleteRecord = async () => {
+  const handleDeleteRecord = useCallback(async () => {
     if (!deleteRecord || !user?.token) return;
 
     try {
@@ -149,7 +166,7 @@ const UserDashboard = () => {
         throw new Error(errorData.message || 'Failed to delete record');
       }
 
-      await fetchUserRecords(); // Refresh records after deletion
+      await fetchUserRecords();
       setIsDeleteDialogOpen(false);
       setDeleteRecord(null);
       toast.success('Record deleted successfully');
@@ -157,7 +174,7 @@ const UserDashboard = () => {
       console.error('Error deleting record:', error);
       toast.error(error.message || 'Failed to delete record');
     }
-  };
+  }, [user?.token, deleteRecord, checkTokenAndLogout, fetchUserRecords]);
 
   const EditModal = () => (
     isEditModalOpen && editingRecord && (
@@ -171,6 +188,7 @@ const UserDashboard = () => {
                 setEditingRecord(null);
               }}
               className="text-gray-500 hover:text-gray-700"
+              disabled={isUpdating}
             >
               <X className="w-6 h-6" />
             </button>
@@ -183,6 +201,7 @@ const UserDashboard = () => {
                 value={editingRecord.title}
                 onChange={(e) => setEditingRecord((prev) => ({ ...prev, title: e.target.value }))}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                disabled={isUpdating}
               />
             </div>
             <div>
@@ -192,6 +211,7 @@ const UserDashboard = () => {
                 onChange={(e) => setEditingRecord((prev) => ({ ...prev, description: e.target.value }))}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 rows="3"
+                disabled={isUpdating}
               />
             </div>
             <div>
@@ -201,6 +221,7 @@ const UserDashboard = () => {
                 value={editingRecord.location}
                 onChange={(e) => setEditingRecord((prev) => ({ ...prev, location: e.target.value }))}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                disabled={isUpdating}
               />
             </div>
             <div>
@@ -209,6 +230,7 @@ const UserDashboard = () => {
                 value={editingRecord.record_type}
                 onChange={(e) => setEditingRecord((prev) => ({ ...prev, record_type: e.target.value }))}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                disabled={isUpdating}
               >
                 <option value="intervention">Intervention</option>
                 <option value="red-flag">Red Flag</option>
@@ -221,15 +243,24 @@ const UserDashboard = () => {
                   setIsEditModalOpen(false);
                   setEditingRecord(null);
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+                disabled={isUpdating}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-800"
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-800 disabled:opacity-50 flex items-center space-x-2"
+                disabled={isUpdating}
               >
-                Save Changes
+                {isUpdating ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Save Changes</span>
+                )}
               </button>
             </div>
           </form>

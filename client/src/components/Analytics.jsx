@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FileText, ChartBar, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
@@ -13,43 +13,7 @@ const AnalyticsView = () => {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
-
-  const fetchAnalytics = async () => {
-    try {
-      setAnalyticsLoading(true);
-      const response = await fetch('/api/analytics', {
-        headers: {
-          'Authorization': `Bearer ${user.token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch analytics');
-      }
-
-      const data = await response.json();
-      
-      // Process the raw records into analytics metrics
-      const metrics = processAnalytics(data.records);
-      setAnalyticsData(metrics);
-    } catch (err) {
-      toast.error('Error loading analytics', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true
-      });
-    } finally {
-      setAnalyticsLoading(false);
-    }
-  };
-
-  const processAnalytics = (records) => {
+  const processAnalytics = useCallback((records) => {
     const totalRecords = records.length;
     const underInvestigation = records.filter(record => 
       record.status.toLowerCase() === 'under investigation'
@@ -64,7 +28,42 @@ const AnalyticsView = () => {
       resolved,
       records
     };
-  };
+  }, []);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setAnalyticsLoading(true);
+      const response = await fetch('/api/analytics', {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch analytics');
+      }
+
+      const data = await response.json();
+      const metrics = processAnalytics(data.records);
+      setAnalyticsData(metrics);
+    } catch (err) {
+      console.error(err.message);
+      toast.error('Error loading analytics', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true
+      });
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [user.token, processAnalytics]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   if (analyticsLoading) {
     return (
